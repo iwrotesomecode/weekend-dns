@@ -1,0 +1,19 @@
+{:paths ["src" "resources"]
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}}
+ :aliases
+ {:run {:main-opts ["-m" "weekend-dns.main"]}
+  ;; :run-x {:ns-default weekend-dns.main
+  ;;         :exec-fn lookup-domain
+  ;;         :exec-args {:domain "www.example.com"}}
+  :cider {:extra-deps {nrepl/nrepl {:mvn/version "1.1.0-alpha1"}
+                       cider/cider-nrepl {:mvn/version "0.30.0"}
+                       refactor-nrepl/refactor-nrepl {:mvn/version "3.6.0"}}
+          :main-opts ["-m" "nrepl.cmdline"
+                      "--middleware" "[refactor-nrepl.middleware/wrap-refactor,cider.nrepl/cider-middleware]"
+                      "-i"]}
+  :build {:deps {io.github.clojure/tools.build {:git/tag "v0.9.4" :git/sha "76b78fe"}}
+          :ns-default build}
+  :test {:extra-paths ["test"]
+         :extra-deps {org.clojure/test.check {:mvn/version "1.1.1"}
+                      io.github.cognitect-labs/test-runner
+                      {:git/tag "v0.5.0" :git/sha "48c3c67"}}}}}
