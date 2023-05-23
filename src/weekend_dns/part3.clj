@@ -49,29 +49,35 @@
     (:data record)
     nil))
 
-(defn resolve-ip [domain-name record-type]
-  (loop [nameserver "198.41.0.4"] ;; Root nameserver a.root-servers.net
-    (prn (str "Querying " nameserver " for " domain-name))
-    (let [response (send-query nameserver domain-name record-type)]
+(defn resolve-ip
+  [domain-name record-type]
+  (reduce (fn [nameserver _]
+            (let [response (send-query (:ip nameserver) domain-name record-type)]
+              (prn (str "Querying " (:ip nameserver) " for " domain-name))
 
-      ;; best case, get answer to query and we're done
-      (if-let [ip (get-answer response)]
-        ip
+              (or
+               ;; best case, get answer to query and we're done
+               (when-let [ip (get-answer response)]
+                 (reduced ip))
 
-        ;; second best, get "additionals" record ip addr of another nameserver to query
-        (if-let [ns-ip (get-nameserver-ip response)]
-          (recur ns-ip)
+               ;; second best, get "additionals" record ip addr of another nameserver to query
+               (when-let [ns-ip (get-nameserver-ip response)]
+                 (assoc nameserver :ip ns-ip))
 
-          ;; or, get the domain name of another nameserver for which we can look up ip addr
-          (if-let [ns-domain (get-nameserver response)]
-            (let [ns (resolve-ip ns-domain TYPE-A)]
-              (prn (str "NS-domain " ns-domain " found at " ns))
-              (recur ns))
+               ;; or, get the domain name of another nameserver for which we can look up ip addr
+               (when-let [ns-domain (get-nameserver response)]
+                 (let [ns (resolve-ip ns-domain TYPE-A)]
+                   (prn (str "NS-domain " ns-domain " found at " ns))
+                   (assoc nameserver :ip ns)))
 
-            ;; or, get the canonical name or alias domain for which we can look up ip addr
-            (if-let [cname-domain (get-canonical-name response)]
-              (let [cname (resolve-ip cname-domain TYPE-A)]
-                (prn (str "CNAME " cname-domain " resolved"))
-                cname)
+               ;; or, get the canonical name or alias domain for which we can look up ip addr
+               (when-let [cname-domain (get-canonical-name response)]
+                 (let [cname (resolve-ip cname-domain TYPE-A)]
+                   (prn (str "CNAME " cname-domain " resolved"))
+                   (reduced cname)))
 
-              (throw (Exception. "Something went wrong.")))))))))
+               (throw (Exception. "Something went wrong.")))))
+
+          {:ip "198.41.0.4"} ;; Root nameserver a.root-servers.net
+          (repeat nil)))
+
