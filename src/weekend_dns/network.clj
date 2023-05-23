@@ -7,7 +7,7 @@
 (defn send-bytes
   "Send a byte-array over a DatagramSocket to the specified
   host and port."
-  [^DatagramSocket socket ^"[B" byte-array ^String host ^int port]
+  [^DatagramSocket socket ^"[B" byte-array ^String host ^long port]
   (let [payload byte-array
         length (count payload)
         address (InetSocketAddress. host port)
