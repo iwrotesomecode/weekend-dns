@@ -18,16 +18,15 @@ small, fast native image.
 
 ## Requirements 
 
-- Java 17+ (most should work with Java 8 except testing sample inputs/outputs
-  with `hexify/unhexify` which rely on Java's `HexFormat`)
+- Java 17+ 
 
 - [Clojure](https://clojure.org/guides/install_clojure) 
 
-  *Optional to build native executable*
+*Optional to build native executable:*
   
 - [GraalVM](https://github.com/graalvm/graalvm-ce-builds/releases) 
 
-  Unpack the package in your installation folder and add it to the path 
+  Unpack the package in your installation folder, add it to the path, and install `native-image` 
 
 ``` 
     $ export GRAALVM_HOME=/full/path/to/graalvm
@@ -38,78 +37,142 @@ small, fast native image.
 ## Installation
 
 ```
-    $ git clone https://github.com/iwrotesomecode/weekend-dns.git
+git clone https://github.com/iwrotesomecode/weekend-dns.git
 ```
 
 
 If creating a native executable with GraalVM, enter the directory and additionally run the build script 
 
 ```
-    $ ./build.sh
+./build.sh
 ```
 
 
 ## Usage
 
-To run the project with Clojure, provide arguments for a domain, e.g. "www.example.com", and record type, e.g. TYPE-A or 1:
+For a menu of all options, run the program with the flag `-h` or `--help`
 
-    $ clj -M:run www.example.com TYPE-A 
-    
-    "Querying 198.41.0.4 for www.example.com"
-    "Querying 192.12.94.30 for www.example.com"
-    "Querying 198.41.0.4 for a.iana-servers.net"
-    "Querying 192.12.94.30 for a.iana-servers.net"
-    "Querying 199.43.135.53 for a.iana-servers.net"
-    "NS-domain a.iana-servers.net found at 199.43.135.53"
-    "Querying 199.43.135.53 for www.example.com"
-    "93.184.216.34"
+```
+clj -M:run -h
 
-To run the project from the native executable after building it with GraalVM, run:
-    
-    $ ./dns www.uchicago.edu 1
+Weekend DNS Resolver
 
-    "Querying 198.41.0.4 for www.uchicago.edu"
-    "Querying 192.5.6.30 for www.uchicago.edu"
-    "Querying 128.135.249.250 for www.uchicago.edu"
-    "Querying 198.41.0.4 for mc-1b49d921-43a2-4264-88fd-edb899e7492a-afd.azurefd.net"
-    "Querying 192.5.6.30 for mc-1b49d921-43a2-4264-88fd-edb899e7492a-afd.azurefd.net"
-    "Querying 150.171.16.37 for mc-1b49d921-43a2-4264-88fd-edb899e7492a-afd.azurefd.net"
-    "Querying 198.41.0.4 for star-azurefd-prod.trafficmanager.net"
-    "Querying 192.5.6.30 for star-azurefd-prod.trafficmanager.net"
-    "Querying 198.41.0.4 for tm1.edgedns-tm.info"
-    "Querying 199.254.31.1 for tm1.edgedns-tm.info"
-    "Querying 208.84.5.4 for tm1.edgedns-tm.info"
-    "NS-domain tm1.edgedns-tm.info found at 13.107.222.240"
-    "Querying 13.107.222.240 for star-azurefd-prod.trafficmanager.net"
-    "Querying 198.41.0.4 for shed.dual-low.part-0043.t-0009.fdv2-t-msedge.net"
-    "Querying 192.5.6.30 for shed.dual-low.part-0043.t-0009.fdv2-t-msedge.net"
-    "Querying 13.107.237.1 for shed.dual-low.part-0043.t-0009.fdv2-t-msedge.net"
-    "CNAME shed.dual-low.part-0043.t-0009.fdv2-t-msedge.net resolved"
-    "CNAME star-azurefd-prod.trafficmanager.net resolved"
-    "CNAME mc-1b49d921-43a2-4264-88fd-edb899e7492a-afd.azurefd.net resolved"
-    "13.107.237.71"
+Usage (native image): ./dns url [options]
+Usage (clj):          clj -M:run url [options]
+
+URL:
+e.g. www.example.com
+
+Options:
+-t, --type TYPE      1           Record Type
+-n, --nameserver IP  198.41.0.4  Nameserver IP
+-r, --response                   Print DNS response
+-v, --verbose
+-h, --help
+
+Examples:
+
+./dns www.example.com
+./dns www.example.com -v -t TYPE-A
+clj -M:run www.example.com -r
+clj -M:run www.example.com -rn 192.5.6.30
+
+```
+
+Example running from Clojure:
+
+```
+clj -M:run www.example.com 
+      
+"93.184.216.34"
+
+```
+
+Example running from the native executable after building it with GraalVM:
+
+```
+./dns www.recurse.com -v
+"Querying 198.41.0.4 for www.recurse.com"
+"Querying 192.5.6.30 for www.recurse.com"
+"Querying 205.251.193.2 for www.recurse.com"
+"Querying 198.41.0.4 for www.recurse.com.herokudns.com"
+"Querying 192.5.6.30 for www.recurse.com.herokudns.com"
+"Querying 198.41.0.4 for dns1.p05.nsone.net"
+"Querying 192.5.6.30 for dns1.p05.nsone.net"
+"Querying 198.51.44.1 for dns1.p05.nsone.net"
+"NS-domain dns1.p05.nsone.net found at 198.51.44.5"
+"Querying 198.51.44.5 for www.recurse.com.herokudns.com"
+"CNAME www.recurse.com.herokudns.com resolved"
+"54.221.251.148"
+```
+
+To view just the DNS response (and optionally specify a nameserver), flag `--response` or `-r` :
+
+```
+./dns www.recurse.com -rn 192.5.6.30
+{:header
+ {:id 32386,
+  :flags 32768,
+  :num-questions 1,
+  :num-answers 0,
+  :num-authorities 4,
+  :num-additionals 1},
+ :questions ({:name "www.recurse.com", :type 1, :class 1}),
+ :answers (),
+ :authorities
+ ({:name "recurse.com",
+   :type 2,
+   :class 1,
+   :ttl 172800,
+   :data "ns-258.awsdns-32.com"}
+  {:name "recurse.com",
+   :type 2,
+   :class 1,
+   :ttl 172800,
+   :data "ns-950.awsdns-54.net"}
+  {:name "recurse.com",
+   :type 2,
+   :class 1,
+   :ttl 172800,
+   :data "ns-1045.awsdns-02.org"}
+  {:name "recurse.com",
+   :type 2,
+   :class 1,
+   :ttl 172800,
+   :data "ns-1724.awsdns-23.co.uk"}),
+ :additionals
+ ({:name "ns-258.awsdns-32.com",
+   :type 1,
+   :class 1,
+   :ttl 172800,
+   :data "205.251.193.2"})}
+
+```
 
     
 To monitor traffic, you can additionally run:
 
-    $ sudo tcpdump -ni any port 53
+```
+sudo tcpdump -ni any port 53
 
-    20:10:43.792269 wlo1  Out IP 192.168.1.13.51934 > 198.41.0.4.53: 13099 A? example.com. (29)
-    20:10:43.809389 wlo1  In  IP 198.41.0.4.53 > 192.168.1.13.51934: 13099- 0/13/14 (489)
-    20:10:43.811043 wlo1  Out IP 192.168.1.13.51934 > 192.5.6.30.53: 46963 A? example.com. (29)
-    20:10:43.839439 wlo1  In  IP 192.5.6.30.53 > 192.168.1.13.51934: 46963- 0/2/0 (77)
-    20:10:43.840559 wlo1  Out IP 192.168.1.13.51934 > 198.41.0.4.53: 48004 A? a.iana-servers.net. (36)
-    20:10:43.856145 wlo1  In  IP 198.41.0.4.53 > 192.168.1.13.51934: 48004- 0/13/14 (493)
-    20:10:43.859153 wlo1  Out IP 192.168.1.13.51934 > 192.5.6.30.53: 29805 A? a.iana-servers.net. (36)
-    20:10:43.885239 wlo1  In  IP 192.5.6.30.53 > 192.168.1.13.51934: 29805- 0/4/6 (240)
-    20:10:43.886803 wlo1  Out IP 192.168.1.13.51934 > 199.43.135.53.53: 62564 A? a.iana-servers.net. (36)
-    20:10:43.901722 wlo1  In  IP 199.43.135.53.53 > 192.168.1.13.51934: 62564*- 1/0/0 A 199.43.135.53 (52)
-    20:10:43.902754 wlo1  Out IP 192.168.1.13.51934 > 199.43.135.53.53: 3738 A? example.com. (29)
-    20:10:43.919264 wlo1  In  IP 199.43.135.53.53 > 192.168.1.13.51934: 3738*- 1/0/0 A 93.184.216.34 (45)
+20:10:43.792269 wlo1  Out IP 192.168.1.13.51934 > 198.41.0.4.53: 13099 A? example.com. (29)
+20:10:43.809389 wlo1  In  IP 198.41.0.4.53 > 192.168.1.13.51934: 13099- 0/13/14 (489)
+20:10:43.811043 wlo1  Out IP 192.168.1.13.51934 > 192.5.6.30.53: 46963 A? example.com. (29)
+20:10:43.839439 wlo1  In  IP 192.5.6.30.53 > 192.168.1.13.51934: 46963- 0/2/0 (77)
+20:10:43.840559 wlo1  Out IP 192.168.1.13.51934 > 198.41.0.4.53: 48004 A? a.iana-servers.net. (36)
+20:10:43.856145 wlo1  In  IP 198.41.0.4.53 > 192.168.1.13.51934: 48004- 0/13/14 (493)
+20:10:43.859153 wlo1  Out IP 192.168.1.13.51934 > 192.5.6.30.53: 29805 A? a.iana-servers.net. (36)
+20:10:43.885239 wlo1  In  IP 192.5.6.30.53 > 192.168.1.13.51934: 29805- 0/4/6 (240)
+20:10:43.886803 wlo1  Out IP 192.168.1.13.51934 > 199.43.135.53.53: 62564 A? a.iana-servers.net. (36)
+20:10:43.901722 wlo1  In  IP 199.43.135.53.53 > 192.168.1.13.51934: 62564*- 1/0/0 A 199.43.135.53 (52)
+20:10:43.902754 wlo1  Out IP 192.168.1.13.51934 > 199.43.135.53.53: 3738 A? example.com. (29)
+20:10:43.919264 wlo1  In  IP 199.43.135.53.53 > 192.168.1.13.51934: 3738*- 1/0/0 A 93.184.216.34 (45)
+
+```
 
 ## Limitations 
 
-- This resolver is only able to query **A** records and additionally parse types **NS**, and **CNAME**. 
+- This resolver is only able to query **A** records and additionally parse types **AAAA**, **NS**, and **CNAME**. 
 
 -  ~~There is a possible exploit in the DNS compression that would lead to an infinite loop if a malicious actor sent a DNS response with a compression entry that points to itself.~~
 *Added check for maximum compression pointers (126). [rationale](https://github.com/miekg/dns/blob/b3dfea07155dbe4baafd90792c67b85a3bf5be23/msg.go#L24-L36)*

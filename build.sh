@@ -12,4 +12,4 @@ native-image --report-unsupported-elements-at-runtime \
     -jar target/weekend-dns-standalone.jar \
     -H:Name=./dns
 
-echo "Success! Run ./dns domain type"
+echo "Success! Run ./dns --help for usage information"

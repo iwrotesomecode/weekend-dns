@@ -1,7 +1,7 @@
 (ns weekend-dns.part2
   (:require [weekend-dns.part1 :refer [build-query make-DNS-header make-DNS-question]]
             [weekend-dns.network :refer [socket send-bytes receive-loop]]
-            [weekend-dns.utils :refer [concat-byte-arrays]]
+            [weekend-dns.utils :refer [concat-byte-arrays hexify]]
             [clojure.string :as str])
   (:import [java.io ByteArrayInputStream DataInputStream]
            [java.nio ByteBuffer]
@@ -13,6 +13,7 @@
 (def TYPE-NS 2)
 (def CNAME 5)
 (def TXT 16)
+(def AAAA 28)
 
 ;; Prevent compression pointer infinite loop
 ;; https://github.com/miekg/dns/blob/b3dfea07155dbe4baafd90792c67b85a3bf5be23/msg.go#L26-L36
@@ -87,6 +88,12 @@
 (defn ip->string [ip-bytes]
   (str/join "." (map #(Byte/toUnsignedInt %) ip-bytes)))
 
+(defn ipv6->string [ip-bytes]
+  (->> (hexify ip-bytes)
+       (partition 4)
+       (map #(apply str %))
+       (str/join ":")))
+
 (defn byte->string [^"[B" name]
   (String. name "UTF-8"))
 
@@ -100,19 +107,22 @@
         data-len (Short/toUnsignedInt (.readShort reader))]
     (cond
       (= type TYPE-NS) (let [data (decode-name reader response)]
-                         (make-DNS-record name type class ttl data))
+                         (make-DNS-record name type class ttl (byte->string data)))
       (= type TYPE-A) (let [data (byte-array data-len)]
                         (.read reader data)
                         (make-DNS-record name type class ttl (ip->string data)))
       (= type CNAME) (let [data (decode-name reader response)]
                        (make-DNS-record name type class ttl (byte->string data)))
+      (= type AAAA) (let [data (byte-array data-len)]
+                      (.read reader data)
+                      (make-DNS-record name type class ttl (ipv6->string data)))
       :else (let [data (byte-array data-len)]
               (.read reader data)
               (make-DNS-record name type class ttl data)))))
 
 (defn parse-question [^DataInputStream reader response]
   (reset! pointer-depth 0)
-  (let [name (decode-name reader response)
+  (let [name (-> (decode-name reader response) (byte->string))
         type (.readShort reader)
         class (.readShort reader)]
     (make-DNS-question name type class)))
