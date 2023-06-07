@@ -28,22 +28,22 @@ small, fast native image.
 
   Unpack the package in your installation folder, add it to the path, and install `native-image` 
 
-``` 
-    $ export GRAALVM_HOME=/full/path/to/graalvm
-    $ export PATH=$GRAALVM_HOME/bin:$PATH 
-    $ gu install native-image
+```sh 
+export GRAALVM_HOME=/full/path/to/graalvm
+export PATH=$GRAALVM_HOME/bin:$PATH 
+gu install native-image
 ```
 
 ## Installation
 
-```
+```sh
 git clone https://github.com/iwrotesomecode/weekend-dns.git
 ```
 
 
 If creating a native executable with GraalVM, enter the directory and additionally run the build script 
 
-```
+```sh
 ./build.sh
 ```
 
@@ -52,7 +52,7 @@ If creating a native executable with GraalVM, enter the directory and additional
 
 For a menu of all options, run the program with the flag `-h` or `--help`
 
-```
+```sh
 clj -M:run -h
 
 Weekend DNS Resolver
@@ -81,7 +81,7 @@ clj -M:run www.example.com -rn 192.5.6.30
 
 Example running from Clojure:
 
-```
+```sh
 clj -M:run www.example.com 
       
 "93.184.216.34"
@@ -90,7 +90,7 @@ clj -M:run www.example.com
 
 Example running from the native executable after building it with GraalVM:
 
-```
+```sh
 ./dns www.recurse.com -v
 "Querying 198.41.0.4 for www.recurse.com"
 "Querying 192.5.6.30 for www.recurse.com"
@@ -108,7 +108,7 @@ Example running from the native executable after building it with GraalVM:
 
 To view just the DNS response (and optionally specify a nameserver), flag `--response` or `-r` :
 
-```
+```sh
 ./dns www.recurse.com -rn 192.5.6.30
 {:header
  {:id 32386,
@@ -152,7 +152,7 @@ To view just the DNS response (and optionally specify a nameserver), flag `--res
     
 To monitor traffic, you can additionally run:
 
-```
+``` sh
 sudo tcpdump -ni any port 53
 
 20:10:43.792269 wlo1  Out IP 192.168.1.13.51934 > 198.41.0.4.53: 13099 A? example.com. (29)
@@ -192,7 +192,7 @@ and recognizing that "32,768" is presented in two's complement as "-32,768" and
 When relying on the actual representational value (e.g. to pass as an argument
 where automatic type promotion happens otherwise), cast to an unsigned int:
 
-```
+```clojure
 ;; equivalent cast methods
 
 (Short/toUnsignedInt -1) ;; => 65535
@@ -224,3 +224,45 @@ to build a native executable with GraalVM, with some changes to prefer
 properly compile the executable it was necessary to fix reflection warnings,
 adding `(set! *warn-on-reflection* true)` in all my source files, and also to
 use `delay` to instantiate the `DatagramSocket` at runtime.
+
+## Other Implementations 
+
+I like this more functional/Clojurey approach using `drop` and `take` on the byte array directly rather than reaching for Java interop to stream the bytes: 
+
+https://github.com/JGailor/simple-dns-server/blob/master/src/dns_server/core.clj
+
+It would need some added functionality to handle pointer compression, but I'd probably head in this direction if refactoring this code. 
+
+``` clojure
+(defn process-headers
+  "Process the 12-byte header into the appropriate fields"
+  [header]
+  (let [id-field     (bytes->int (byte-array (take 2 header)))
+        byte3        (first (drop 2 header))
+        byte4        (first (drop 3 header))
+        qr-field     (bit-and 2r00000001 byte3)
+        opcode-field (bit-and 2r00011110 byte3)
+        aa-field     (bit-and 2r00100000 byte3)
+        tc-field     (bit-and 2r01000000 byte3)
+        rd-field     (bit-and 2r10000000 byte3)
+        ra-field     (bit-and 2r00000001 byte4)
+        z-field      (bit-and 2r00001110 byte4)
+        rcode-field  (bit-and 2r11110000 byte4)
+        qd-count     (bytes->int (byte-array (take 2 (drop 4 header))))
+        an-count     (bytes->int (byte-array (take 2 (drop 6 header))))
+        ns-count     (bytes->int (byte-array (take 2 (drop 8 header))))
+        ar-count     (bytes->int (byte-array (take 2 (drop 10 header))))]
+    (hash-map :id-field id-field
+              :qr-field qr-field
+              :opcode-field opcode-field
+              :aa-field aa-field
+              :tc-field tc-field
+              :rd-field rd-field
+              :ra-field ra-field
+              :z-field z-field
+              :rcode-field rcode-field
+              :qd-count qd-count
+              :an-count an-count
+              :ns-count ns-count
+              :ar-count ar-count)))
+```
